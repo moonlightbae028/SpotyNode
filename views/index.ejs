@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brat Music - Music Player</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #181818;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            text-align: center;
+            background-color: #282828;
+            padding: 20px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .nav-links {
+            margin: 10px 0;
+        }
+
+        .nav-links a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #1db954;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #282828;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .player {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .current-song {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .album-cover-large {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+
+        .song-queue {
+            margin-top: 20px;
+        }
+
+        .song-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            cursor: move;
+        }
+
+        .song-item:hover {
+            background-color: #333;
+        }
+
+        .album-cover {
+            width: 80px;
+            height: 80px;
+            margin-right: 10px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+
+        .control-btn {
+            background-color: #1db954;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 18px;
+        }
+
+        .control-btn:hover {
+            background-color: #1ed760;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .center-album-cover {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        /* New styles for the vinyl effect */
+        .vinyl {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, #333, #000);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        .vinyl img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            object-fit: cover;
+            transition: transform 0.3s; /* Smooth transition for scaling effect */
+        }
+
+        .spinning {
+            animation: spin 3s linear infinite; /* Spin effect when playing */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .playing {
+            transform: scale(1.05); /* Slightly enlarge the album cover when playing */
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Brat Music</h1>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/upload">Upload</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="player">
+            <div class="vinyl" id="vinyl">
+                <img id="current-album-cover" class="album-cover-large" src="/uploads/default-cover.jpg" alt="Current Album Cover">
+            </div>
+            <audio id="audio-player"></audio>
+            <div id="current-song" class="current-song">Select a song to play</div>
+            <input id="progress-slider" class="slider" type="range" value="0" min="0" max="100" step="1" />
+            <div class="controls">
+                <button class="control-btn" id="prev-btn">⏮</button> <!-- Previous button -->
+                <button class="control-btn" id="play-btn">▶</button> <!-- Play button -->
+                <button class="control-btn" id="pause-btn" style="display: none;">⏸</button> <!-- Pause button -->
+                <button class="control-btn" id="next-btn">⏭</button> <!-- Next button -->
+            </div>
+        </div>
+        <div class="song-queue">
+            <h2>Song List:</h2>
+            <ul id="song-list">
+                <% songs.forEach(song => { %>
+                    <li class="song-item" draggable="true" data-file="<%= song.filepath %>" data-album-cover="<%= song.album_cover ? song.album_cover : '/uploads/default-cover.jpg' %>">
+                        <div class="center-album-cover">
+                            <img src="<%= song.album_cover ? song.album_cover : '/uploads/default_cover.jpg' %>" alt="Album Cover" class="album-cover">
+                        </div>
+                        <span><%= song.uploader_name %></span>
+                        <button class="play-btn">Play</button>
+                    </li>
+                <% }) %>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const audioPlayer = document.getElementById('audio-player');
+            const currentSongDisplay = document.getElementById('current-song');
+            const currentAlbumCover = document.getElementById('current-album-cover');
+            const songItems = document.querySelectorAll('.song-item');
+            const playButton = document.getElementById('play-btn');
+            const pauseButton = document.getElementById('pause-btn');
+            const prevButton = document.getElementById('prev-btn');
+            const nextButton = document.getElementById('next-btn');
+            const progressSlider = document.getElementById('progress-slider');
+            const vinyl = document.getElementById('vinyl');
+
+            let currentSongIndex = -1;
+
+            songItems.forEach((item, index) => {
+                const playButton = item.querySelector('.play-btn');
+                playButton.addEventListener('click', function() {
+                    currentSongIndex = index; // Update current song index
+                    loadSong(item);
+                });
+
+                item.addEventListener('dragstart', function() {
+                    item.classList.add('dragging');
+                });
+
+                item.addEventListener('dragend', function() {
+                    item.classList.remove('dragging');
+                });
+
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    const draggingItem = document.querySelector('.dragging');
+                    const currentItem = item;
+                    const isDraggingBelow = draggingItem.compareDocumentPosition(currentItem) & Node.DOCUMENT_POSITION_FOLLOWING;
+
+                    if (isDraggingBelow) {
+                        songList.insertBefore(draggingItem, currentItem.nextSibling);
+                    } else {
+                        songList.insertBefore(draggingItem, currentItem);
+                    }
+                });
+            });
+
+            function loadSong(item) {
+                const songFile = item.getAttribute('data-file');
+                const albumCover = item.getAttribute('data-album-cover');
+                audioPlayer.src = songFile; // Set the audio source
+                audioPlayer.play(); // Play the song
+                currentSongDisplay.textContent = item.textContent; // Display the current song
+                currentAlbumCover.src = albumCover; // Update the album cover
+                playButton.style.display = 'none';
+                pauseButton.style.display = 'inline';
+                vinyl.classList.add('spinning'); // Start spinning
+                currentAlbumCover.classList.add('playing'); // Add playing class for scaling effect
+                updateSlider(); // Update the slider
+            }
+
+            playButton.addEventListener('click', function() {
+                audioPlayer.play();
+                playButton.style.display = 'none';
+                pauseButton.style.display = 'inline';
+                vinyl.classList.add('spinning'); // Start spinning
+                currentAlbumCover.classList.add('playing'); // Add playing class for scaling effect
+            });
+
+            pauseButton.addEventListener('click', function() {
+                audioPlayer.pause();
+                playButton.style.display = 'inline';
+                pauseButton.style.display = 'none';
+                vinyl.classList.remove('spinning'); // Stop spinning
+                currentAlbumCover.classList.remove('playing'); // Remove playing class for scaling effect
+            });
+
+            nextButton.addEventListener('click', function() {
+                if (currentSongIndex < songItems.length - 1) {
+                    currentSongIndex++;
+                } else {
+                    currentSongIndex = 0; // Loop back to the first song
+                }
+                loadSong(songItems[currentSongIndex]);
+            });
+
+            prevButton.addEventListener('click', function() {
+                if (currentSongIndex > 0) {
+                    currentSongIndex--;
+                } else {
+                    currentSongIndex = songItems.length - 1; // Loop back to the last song
+                }
+                loadSong(songItems[currentSongIndex]);
+            });
+
+            audioPlayer.addEventListener('timeupdate', function() {
+                progressSlider.value = (audioPlayer.currentTime / audioPlayer.duration) * 100 || 0; // Update progress slider
+            });
+
+            progressSlider.addEventListener('input', function() {
+                audioPlayer.currentTime = (progressSlider.value / 100) * audioPlayer.duration; // Change song time
+            });
+
+            audioPlayer.addEventListener('ended', function() {
+                nextButton.click(); // Automatically play the next song
+            });
+        });
+    </script>
+</body>
+</html>
